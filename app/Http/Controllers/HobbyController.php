@@ -7,6 +7,11 @@ use Illuminate\Http\Request;
 
 class HobbyController extends Controller
 {
+
+    public function __construct(){
+        $this->middleware('auth')->except(['index', 'show']);
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -16,10 +21,13 @@ class HobbyController extends Controller
     {
         //dd = die+dump
     
-        $hobbies = Hobby::all();
+        //$hobbies = Hobby::all();
+        //$hobbies = Hobby::paginate(10);
+        $hobbies = Hobby::orderBy('created_at', 'DESC')->paginate(10);
+
 
         return view('hobby.index')->with([
-            'hobbiest' => $hobbies
+            'hobbies' => $hobbies
         ]);
     }
 
@@ -50,7 +58,8 @@ class HobbyController extends Controller
 
         $hobby =  new Hobby([
             'name' => $request['name'],
-            'description' => $request['description']
+            'description' => $request['description'],
+            'user_id' => auth()->id()
 
         ]);
         $hobby->save();
@@ -127,6 +136,7 @@ class HobbyController extends Controller
         $hobby->delete();
 
         return $this->index()->with([
+        //return redirect()->back()->with([
             'message_success' => "The Hobby <b>".$oldName."</b> was deleted."
         ]);
     }
