@@ -10,6 +10,12 @@ class Tag extends Model
         return $this->belongsToMany('App\Hobby');
     }
 
+    function filteredHobbies(){
+        return $this->belongsToMany('App\Hobby')
+        ->wherePivot('tag_id', $this->id)
+        ->orderBy('updated_at', 'DESC');
+    }
+
     //
     protected $fillable = [
         'name', 'style',
