@@ -6,10 +6,14 @@ use App\Hobby;
 use App\Tag;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
+use Intervention\Image\Facades\Image;
+
 class HobbyController extends Controller
 {
 
-    public function __construct(){
+
+    public function __construct()
+    {
         $this->middleware('auth')->except(['index', 'show']);
     }
 
@@ -20,16 +24,16 @@ class HobbyController extends Controller
      */
     public function index()
     {
-        //dd = die+dump
-    
         //$hobbies = Hobby::all();
         //$hobbies = Hobby::paginate(10);
+
         $hobbies = Hobby::orderBy('created_at', 'DESC')->paginate(10);
 
 
         return view('hobby.index')->with([
             'hobbies' => $hobbies
         ]);
+
     }
 
     /**
@@ -39,7 +43,6 @@ class HobbyController extends Controller
      */
     public function create()
     {
-        //
         return view('hobby.create');
     }
 
@@ -51,27 +54,29 @@ class HobbyController extends Controller
      */
     public function store(Request $request)
     {
-        //
-        $request -> validate([
+
+        $request->validate([
             'name' => 'required|min:3',
-            'description' => 'required|min:5'
+            'description' => 'required|min:5',
+            'image' => 'mimes:jpeg,jpg,bmp,png,gif'
         ]);
 
-        $hobby =  new Hobby([
+        $hobby = new Hobby([
             'name' => $request['name'],
             'description' => $request['description'],
             'user_id' => auth()->id()
-
         ]);
         $hobby->save();
-        /*
-        return $this->index()->with([
-            'message_success' => "The Hobby <b>".$hobby->name."</b> was created."
-        ]);
-        */
-        return redirect('/hobby/ '. $hobby->id)->with([
-            'message_warning' => "Please assign some Tags now."
-        ]);;
+
+        if ($request->image) {
+            $this->saveImages($request->image, $hobby->id);
+        }
+
+        return redirect('/hobby/' . $hobby->id)->with(
+            [
+                'message_warning' => "Please assign some tags now."
+            ]
+        );
     }
 
     /**
@@ -82,8 +87,6 @@ class HobbyController extends Controller
      */
     public function show(Hobby $hobby)
     {
-        //
-
         $allTags = Tag::all();
         $usedTags = $hobby->tags;
         $availableTags = $allTags->diff($usedTags);
@@ -104,9 +107,10 @@ class HobbyController extends Controller
      */
     public function edit(Hobby $hobby)
     {
-        //
         return view('hobby.edit')->with([
-            'hobby' => $hobby
+            'hobby' => $hobby,
+            'message_success' => Session::get('message_success'),
+            'message_warning' => Session::get('message_warning')
         ]);
     }
 
@@ -119,22 +123,26 @@ class HobbyController extends Controller
      */
     public function update(Request $request, Hobby $hobby)
     {
-        //
-        $request -> validate([
+        $request->validate([
             'name' => 'required|min:3',
-            'description' => 'required|min:5'
+            'description' => 'required|min:5',
+            'image' => 'mimes:jpeg,jpg,bmp,png,gif'
         ]);
+
+        if ($request->image) {
+            $this->saveImages($request->image, $hobby->id);
+        }
 
         $hobby->update([
             'name' => $request['name'],
-            'description' => $request['description']
-
-        ]);
-        
-        return $this->index()->with([
-            'message_success' => "The Hobby <b>".$hobby->name."</b> was updated."
+            'description' => $request['description'],
         ]);
 
+        return $this->index()->with(
+            [
+                'message_success' => "The hobby <b>" . $hobby->name . "</b> was updated."
+            ]
+        );
     }
 
     /**
@@ -145,13 +153,50 @@ class HobbyController extends Controller
      */
     public function destroy(Hobby $hobby)
     {
-        //
         $oldName = $hobby->name;
         $hobby->delete();
+        return $this->index()->with(
+            [
+                'message_success' => "The hobby <b>" . $oldName . "</b> was deleted."
+            ]
+        );
+    }
 
-        return $this->index()->with([
-        //return redirect()->back()->with([
-            'message_success' => "The Hobby <b>".$oldName."</b> was deleted."
-        ]);
+    public function saveImages($imageInput, $hobby_id){
+
+        $image = Image::make($imageInput);
+        if ( $image->width() > $image->height() ) { // Landscape
+            $image->widen(1200)
+                ->save(public_path() . "/img/hobbies/" . $hobby_id . "_large.jpg")
+                ->widen(400)->pixelate(12)
+                ->save(public_path() . "/img/hobbies/" . $hobby_id . "_pixelated.jpg");
+            $image = Image::make($imageInput);
+            $image->widen(60)
+                ->save(public_path() . "/img/hobbies/" . $hobby_id . "_thumb.jpg");
+        } else { // Portrait
+            $image->heighten(900)
+                ->save(public_path() . "/img/hobbies/" . $hobby_id . "_large.jpg")
+                ->heighten(400)->pixelate(12)
+                ->save(public_path() . "/img/hobbies/" . $hobby_id . "_pixelated.jpg");
+            $image = Image::make($imageInput);
+            $image->heighten(60)
+                ->save(public_path() . "/img/hobbies/" . $hobby_id . "_thumb.jpg");
+        }
+
+    }
+
+    public function deleteImages($hobby_id){
+        if(file_exists(public_path() . "/img/hobbies/" . $hobby_id . "_large.jpg"))
+            unlink(public_path() . "/img/hobbies/" . $hobby_id . "_large.jpg");
+        if(file_exists(public_path() . "/img/hobbies/" . $hobby_id . "_thumb.jpg"))
+            unlink(public_path() . "/img/hobbies/" . $hobby_id . "_thumb.jpg");
+        if(file_exists(public_path() . "/img/hobbies/" . $hobby_id . "_pixelated.jpg"))
+            unlink(public_path() . "/img/hobbies/" . $hobby_id . "_pixelated.jpg");
+
+        return back()->with(
+            [
+                'message_success' => "The Image was deleted."
+            ]
+        );
     }
 }
