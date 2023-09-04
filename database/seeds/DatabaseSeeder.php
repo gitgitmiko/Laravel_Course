@@ -16,5 +16,6 @@ class DatabaseSeeder extends Seeder
          $this->call(UserSeeder::class);
          //php artisan migrate:fresh untuk memigrasi ulang database dan menghapus semua data
          //php artisan migrate:fresh --seed untuk memigrasi table yg ada di seed
+         $this->call(AdminSeeder::class);
     }
 }
