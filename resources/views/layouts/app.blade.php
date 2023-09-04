@@ -43,6 +43,13 @@
                         <li><a class="nav-link{{ Request::is('info') ? ' active' : ''}}" href="/info">Info</a></li>
                         <li><a class="nav-link{{ Request::is('hobby*') ? ' active' : ''}}" href="/hobby">Hobbies</a></li>
                         <li><a class="nav-link{{ Request::is('tag*') ? ' active' : ''}}" href="/tag">Tags</a></li>
+                        @if(Auth::user() && auth()->user()->role != 'admin')
+                            <li><a class="" href="/"></a></li>
+                        @elseif(Auth::user() && auth()->user()->role === 'admin')
+                            <li><a class="nav-link{{ Request::is('user') ? ' active' : ''}}" href="/user">Admin</a></li>
+                        @else
+                            <li><a class="" href="/"></a></li>
+                        @endif
                     </ul>
 
                     <!-- Right Side Of Navbar -->

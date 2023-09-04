@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\User;
+use GuzzleHttp\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Intervention\Image\Facades\Image;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Gate;
@@ -13,6 +15,7 @@ class UserController extends Controller
     public function __construct()
     {
         $this->middleware('auth')->except(['show']);
+        $this->middleware('admin')->except(['edit','show']);
     }
 
     /**
@@ -23,6 +26,12 @@ class UserController extends Controller
     public function index()
     {
         //
+        $users = User::all();
+        $users = User::orderBy('created_at', 'DESC')->paginate(10);
+
+        return view('user.index')->with([
+            'users' => $users
+        ]);
     }
 
     /**
@@ -54,9 +63,20 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        return view('user.show')->with([
-            'user' => $user
-        ]);
+        if(Auth::user() && auth()->user()->role === 'admin'){
+
+            return view('user.show2')->with([
+                'user' => $user
+            ]);
+
+        }
+        else{
+
+            return view('user.show')->with([
+                'user' => $user
+            ]);
+
+        }
     }
 
     /**
@@ -69,11 +89,21 @@ class UserController extends Controller
     {
         abort_unless(Gate::allows('update', $user), 403);
 
-        return view('user.edit')->with([
-            'user' => $user,
-            'message_success' => Session::get('message_success'),
-            'message_warning' => Session::get('message_warning')
-        ]);
+        if(auth()->user()->role === 'admin'){
+            return view('user.edit2')->with([
+                'user' => $user,
+                'message_success' => Session::get('message_success'),
+                'message_warning' => Session::get('message_warning')
+            ]);
+        }
+        else
+        {
+            return view('user.edit')->with([
+                'user' => $user,
+                'message_success' => Session::get('message_success'),
+                'message_warning' => Session::get('message_warning')
+            ]);
+        }
     }
 
     /**
@@ -97,8 +127,11 @@ class UserController extends Controller
         }
 
         $user->update([
+            'name' => $request['name'],
+            'email' => $request['email'],
             'motto' => $request['motto'],
             'about_me' => $request['about_me'],
+            'role' => $request['role']
         ]);
 
         return redirect('/home')->with(
